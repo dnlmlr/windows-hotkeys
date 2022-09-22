@@ -199,6 +199,12 @@ impl<T> HotkeyManager<T> {
     }
 }
 
+impl<T> Drop for HotkeyManager<T> {
+    fn drop(&mut self) {
+        let _ = self.unregister_all();
+    }
+}
+
 /// Get the global keystate for a given Virtual Key.
 ///
 /// Return true if the key is pressed, false otherwise.
