@@ -29,7 +29,6 @@ fn main() {
     .unwrap();
 
     // Run the event handler in a blocking loop. This will block forever and execute the set
-    // callbacks when registered hotkeys are detected. In order to not block, this can also simply
-    // be executed in another thread
+    // callbacks when registered hotkeys are detected
     hkm.event_loop();
 }

@@ -7,9 +7,10 @@ pub mod keys;
 use std::collections::HashMap;
 
 use winapi::shared::windef::HWND;
-use winapi::um::winuser;
+use winapi::um::libloaderapi::GetModuleHandleA;
 use winapi::um::winuser::{
-    GetAsyncKeyState, GetMessageW, RegisterHotKey, UnregisterHotKey, MSG, WM_HOTKEY,
+    self, CreateWindowExA, DestroyWindow, GetAsyncKeyState, GetMessageW, RegisterHotKey,
+    UnregisterHotKey, HWND_MESSAGE, MSG, WM_HOTKEY, WS_DISABLED, WS_EX_NOACTIVATE,
 };
 
 use crate::{error::HkError, keys::*};
@@ -32,6 +33,7 @@ struct HotkeyCallback<T> {
 /// Register and manage hotkeys with windows, as well as the callbacks.
 ///
 pub struct HotkeyManager<T> {
+    hwnd: HwndDropper,
     id_offset: i32,
     handlers: HashMap<HotkeyId, HotkeyCallback<T>>,
 }
@@ -46,21 +48,13 @@ impl<T> HotkeyManager<T> {
     /// mind though that only one instance can be listing for hotkeys anyways.
     ///
     pub fn new() -> HotkeyManager<T> {
+        // Try to create a hidden window to receive the hotkey events for the HotkeyManager.
+        // If the window creation fails, HWND 0 (null) is used which registers hotkeys to the thread
+        // message queue and gets messages from all thread associated windows
+        let hwnd = create_hidden_window().unwrap_or(HwndDropper(std::ptr::null_mut()));
         HotkeyManager {
+            hwnd,
             id_offset: 0,
-            handlers: HashMap::new(),
-        }
-    }
-
-    /// Create a new HotkeyManager instance and start enumerating the
-    /// registered hotkey ids with `id_offset` to avoid id conflicts.
-    ///
-    /// This can be used to create multiple at instance of the `HotkeyManager`
-    /// that all have hotkeys registered with windows.
-    ///
-    pub fn new_with_id_offset(id_offset: i32) -> HotkeyManager<T> {
-        HotkeyManager {
-            id_offset,
             handlers: HashMap::new(),
         }
     }
@@ -100,7 +94,7 @@ impl<T> HotkeyManager<T> {
         // Try to register the hotkey combination with windows
         let reg_ok = unsafe {
             RegisterHotKey(
-                0 as HWND,
+                self.hwnd.0,
                 register_id.0,
                 ModKey::combine(key_modifiers) | winuser::MOD_NOREPEAT as u32,
                 key.to_vk_code() as u32,
@@ -125,6 +119,9 @@ impl<T> HotkeyManager<T> {
 
     /// Same as `register_extrakeys` but without extra keys.
     ///
+    /// # Windows API Functions used
+    /// - https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerhotkey
+    ///
     pub fn register(
         &mut self,
         key: VKey,
@@ -134,8 +131,13 @@ impl<T> HotkeyManager<T> {
         self.register_extrakeys(key, key_modifiers, &[], callback)
     }
 
+    /// Unregister a hotkey
+    ///
+    /// # Windows API Functions used
+    /// - https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-unregisterhotkey
+    ///
     pub fn unregister(&mut self, id: HotkeyId) -> Result<(), HkError> {
-        let ok = unsafe { UnregisterHotKey(0 as HWND, id.0) };
+        let ok = unsafe { UnregisterHotKey(self.hwnd.0, id.0) };
 
         match ok {
             0 => Err(HkError::UnregistrationFailed),
@@ -146,6 +148,12 @@ impl<T> HotkeyManager<T> {
         }
     }
 
+    /// Unregister all registered hotkeys. This will be called automatically when dropping the
+    /// HotkeyManager instance
+    ///
+    /// # Windows API Functions used
+    /// - https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-unregisterhotkey
+    ///
     pub fn unregister_all(&mut self) -> Result<(), HkError> {
         let ids: Vec<_> = self.handlers.keys().copied().collect();
         for id in ids {
@@ -168,7 +176,7 @@ impl<T> HotkeyManager<T> {
             let mut msg = std::mem::MaybeUninit::<MSG>::uninit();
 
             // Block and read a message from the message queue. Filtered by only WM_HOTKEY messages
-            let ok = unsafe { GetMessageW(msg.as_mut_ptr(), 0 as HWND, WM_HOTKEY, WM_HOTKEY) };
+            let ok = unsafe { GetMessageW(msg.as_mut_ptr(), self.hwnd.0, WM_HOTKEY, WM_HOTKEY) };
 
             if ok != 0 {
                 let msg = unsafe { msg.assume_init() };
@@ -219,4 +227,43 @@ pub fn get_global_keystate(vk: VKey) -> bool {
     let key_state = key_state as u32 >> 31;
 
     key_state == 1
+}
+
+/// Wrapper around a HWND windows pointer that destroys the window on drop
+struct HwndDropper(HWND);
+
+impl Drop for HwndDropper {
+    fn drop(&mut self) {
+        if !self.0.is_null() {
+            let _ = unsafe { DestroyWindow(self.0) };
+        }
+    }
+}
+
+/// Try to create a hidden "message-only" window
+fn create_hidden_window() -> Result<HwndDropper, ()> {
+    let hwnd = unsafe {
+        // Get the current module handle
+        let hinstance = GetModuleHandleA(std::ptr::null_mut());
+        CreateWindowExA(
+            WS_EX_NOACTIVATE,
+            // A class that is not more for windows, but this shouldn't matter since it is hidden
+            b"Static\0".as_ptr() as *const i8,
+            b"\0".as_ptr() as *const i8,
+            WS_DISABLED,
+            0,
+            0,
+            0,
+            0,
+            HWND_MESSAGE,
+            std::ptr::null_mut(),
+            hinstance,
+            std::ptr::null_mut(),
+        )
+    };
+    if hwnd.is_null() {
+        Err(())
+    } else {
+        Ok(HwndDropper(hwnd))
+    }
 }
