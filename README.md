@@ -55,3 +55,11 @@ Simply stopping the loop is another problem. Using the same synchronization appr
 previously the actual loop can be stopped. The issue here is that the `HotkeyManager::poll_event` 
 blocks at least until a `WM_HOTKEY` window event is received. A possible solution could be to 
 additionally wait for `WM_USER` messages and send one of those in order to stop the loop.
+
+### Threading
+Due to limitations in the windows API, hotkey events can only be received and unregistered on the 
+same thread as they were initially registered. This means that a `HotkeyManager` instance can't be 
+moved between threads. 
+
+Using `windows-hotkeys` with multithreading is still possible, but the `HotkeyManager` must be 
+created and used on the same thread.
