@@ -11,8 +11,9 @@ combinations together with easy callbacks.
 - Register hotkeys with Key + Modifier
 - Register hotkeys with Key + Modifier and require additional keys to be pressed at the same time
 - Set rust callback functions or closures that are executed on hotkey trigger
-- High level rust abstractions over the Virtual Keys (`VK_*` constants) and Modifier Keys (`MOD_*` constants)
-- Create `VKey`s (Virtual Keys) and `ModKey`s (Modifier Keys) from name strings
+- High level rust abstractions over the Virtual Keys (`VK_*` constants) and Modifier Keys 
+  (`MOD_*` constants)
+- Create `VKey`s (Virtual Keys) and `ModKey`s (Modifier Keys) from key name strings
 
 ## How to use
 
@@ -36,4 +37,21 @@ fn main() {
 }
 ```
 
+## Current limitations
 
+### Controlling the event loop
+Currently the biggest limitation is the reconfiguration (registration / unregistration) of hotkeys 
+while at the same time having the event loop running. The `HotkeyManager::event_loop` function will
+run and block indefinitely and calling `HotkeyManager::poll_event` will also block until a hotkey 
+is triggered. So using a custom loop allows to break the loop (and reconfigure hotkeys), but only 
+when a hotkey is actually triggered.
+
+Technically registering and unregistering hotkeys with the winapi can be done fully independent of 
+the actual event loop, so this could be done while still having the event loop running. This would
+require synchronization around the `HotkeyManager`, since the modifications and event loop would be
+running on different threads.
+
+Simply stopping the loop is another problem. Using the same synchronization approach as discussed 
+previously the actual loop can be stopped. The issue here is that the `HotkeyManager::poll_event` 
+blocks at least until a `WM_HOTKEY` window event is received. A possible solution could be to 
+additionally wait for `WM_USER` messages and send one of those in order to stop the loop.
