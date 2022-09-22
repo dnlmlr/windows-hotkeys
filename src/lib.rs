@@ -38,6 +38,12 @@ pub struct HotkeyManager<T> {
     handlers: HashMap<HotkeyId, HotkeyCallback<T>>,
 }
 
+impl<T> Default for HotkeyManager<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T> HotkeyManager<T> {
     /// Create a new HotkeyManager instance.
     ///
@@ -187,10 +193,10 @@ impl<T> HotkeyManager<T> {
                     // Get the callback for the received ID
                     if let Some(handler) = self.handlers.get(&hk_id) {
                         // Check if all extra keys are pressed
-                        if let None = handler
+                        if !handler
                             .extra_keys
                             .iter()
-                            .find(|&vk| !get_global_keystate(*vk))
+                            .any(|vk| !get_global_keystate(*vk))
                         {
                             return (handler.callback)();
                         }

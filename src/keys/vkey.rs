@@ -525,13 +525,13 @@ impl VKey {
     /// digit hex representation. For example 0x08 == VK_TAB (Tab key)
     ///
     /// See https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
-    pub fn from_str(val: &str) -> Result<Self, HkError> {
+    pub fn from_keyname(val: &str) -> Result<Self, HkError> {
         let val = val.to_ascii_uppercase();
 
         // Single letter => Simply use the ASCII Code
         if val.as_bytes().len() == 1 {
             let val = val.as_bytes()[0];
-            if val >= b'A' && val <= b'Z' || val >= b'0' && val <= b'9' {
+            if (b'A'..=b'Z').contains(&val) || (b'0'..=b'9').contains(&val) {
                 return Ok(Self::CustomKeyCode(val as i32));
             }
         }
@@ -546,7 +546,7 @@ impl VKey {
         }
 
         // Try to match against hardcoded VK_* Key specifiers
-        Ok(match val.trim_start_matches("VK_").as_ref() {
+        Ok(match val.trim_start_matches("VK_") {
             "BACK" => Self::Back,
             "TAB" => Self::Tab,
             "CLEAR" => Self::Clear,

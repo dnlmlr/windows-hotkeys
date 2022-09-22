@@ -22,7 +22,7 @@ impl ModKey {
     /// - WIN / WINDOWS / SUPER
     /// - NOREPEAT
     ///
-    pub fn from_str(val: &str) -> Result<Self, HkError> {
+    pub fn from_keyname(val: &str) -> Result<Self, HkError> {
         Ok(match val.to_ascii_uppercase().as_ref() {
             "ALT" => ModKey::Alt,
             "CTRL" | "CONTROL" => ModKey::Ctrl,
@@ -64,9 +64,9 @@ impl Display for ModKey {
     }
 }
 
-impl Into<VKey> for ModKey {
-    fn into(self) -> VKey {
-        match self {
+impl From<ModKey> for VKey {
+    fn from(mk: ModKey) -> VKey {
+        match mk {
             ModKey::Alt => VKey::Menu,
             ModKey::Ctrl => VKey::Control,
             ModKey::Shift => VKey::Shift,

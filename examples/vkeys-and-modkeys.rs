@@ -18,10 +18,10 @@ fn main() {
     // Create VKey from key name string. This works with "A"-"Z", "0"-"9", the constant names
     // "VK_*" and hex codes prefixed with "0x*"
     // Useful when reading hotkeys in text form through config files or user input
-    let vk_b4 = VKey::from_str("b").unwrap();
-    let vk_b5 = VKey::from_str("B").unwrap();
-    let vk_b6 = VKey::from_str("0x42").unwrap();
-    let vk_up2 = VKey::from_str("VK_UP").unwrap();
+    let vk_b4 = VKey::from_keyname("b").unwrap();
+    let vk_b5 = VKey::from_keyname("B").unwrap();
+    let vk_b6 = VKey::from_keyname("0x42").unwrap();
+    let vk_up2 = VKey::from_keyname("VK_UP").unwrap();
 
     // Create VKey directly from the virtual keycode
     // See: https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
@@ -64,7 +64,7 @@ fn main() {
     // Create ModKey from the enum variant
     let mod_alt1 = ModKey::Alt;
     // Create ModKey from key name string
-    let mod_alt2 = ModKey::from_str("ALT").unwrap();
+    let mod_alt2 = ModKey::from_keyname("ALT").unwrap();
 
     // With modkeys, there is no `CustomKeyCode`, so they can be safely matched and compared
     assert_eq!(mod_alt1, mod_alt2);
