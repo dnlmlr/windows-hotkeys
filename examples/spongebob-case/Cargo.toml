@@ -1,0 +1,8 @@
+[package]
+name = "spongebob-case"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+windows-hotkeys = { path="../../" }
+clipboard-win = "4.4.2"
