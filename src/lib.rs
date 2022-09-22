@@ -156,40 +156,40 @@ impl<T> HotkeyManager<T> {
     }
 
     /// Poll a hotkey event, execute the callback if all keys match and return the callback
-    /// result. If the event does not match all keys, None is returned.
+    /// result.
     ///
     /// This will block until a hotkey is pressed and therefore not consume any cpu power.
     ///
     /// ## Windows API Functions used
     /// - https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getmessagew
     ///
-    pub fn poll_event(&mut self) -> Option<T> {
-        let mut msg = std::mem::MaybeUninit::<MSG>::uninit();
+    pub fn poll_event(&mut self) -> T {
+        loop {
+            let mut msg = std::mem::MaybeUninit::<MSG>::uninit();
 
-        // Block and read a message from the message queue. Filtered by only WM_HOTKEY messages
-        let ok = unsafe { GetMessageW(msg.as_mut_ptr(), 0 as HWND, WM_HOTKEY, WM_HOTKEY) };
+            // Block and read a message from the message queue. Filtered by only WM_HOTKEY messages
+            let ok = unsafe { GetMessageW(msg.as_mut_ptr(), 0 as HWND, WM_HOTKEY, WM_HOTKEY) };
 
-        if ok != 0 {
-            let msg = unsafe { msg.assume_init() };
+            if ok != 0 {
+                let msg = unsafe { msg.assume_init() };
 
-            if WM_HOTKEY == msg.message {
-                let hk_id = HotkeyId(msg.wParam as i32);
+                if WM_HOTKEY == msg.message {
+                    let hk_id = HotkeyId(msg.wParam as i32);
 
-                // Get the callback for the received ID
-                if let Some(handler) = self.handlers.get(&hk_id) {
-                    // Check if all extra keys are pressed
-                    if let None = handler
-                        .extra_keys
-                        .iter()
-                        .find(|&vk| !get_global_keystate(*vk))
-                    {
-                        return Some((handler.callback)());
+                    // Get the callback for the received ID
+                    if let Some(handler) = self.handlers.get(&hk_id) {
+                        // Check if all extra keys are pressed
+                        if let None = handler
+                            .extra_keys
+                            .iter()
+                            .find(|&vk| !get_global_keystate(*vk))
+                        {
+                            return (handler.callback)();
+                        }
                     }
                 }
             }
         }
-
-        None
     }
 
     pub fn event_loop(&mut self) {
