@@ -18,23 +18,31 @@ use winapi::um::winuser::{
 use crate::{error::HkError, keys::*};
 
 /// Identifier of a registered hotkey. This is returned when registering a hotkey and can be used
-/// to unregister it again.
+/// to unregister it later.
+///
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct HotkeyId(i32);
 
-/// HotkeyCallback contains the callback function and a list of extra_keys.
+/// HotkeyCallback contains the callback function and a list of extra_keys that need to be pressed
+/// together with the hotkey when executing the callback.
 ///
 struct HotkeyCallback<T> {
-    /// Callback function to execute  when the hotkey matches
+    /// Callback function to execute  when the hotkey & extrakeys match
     callback: Box<dyn Fn() -> T + 'static>,
-    /// List of additional VKs that are required to be pressed to execute
+    /// List of additional VKeys that are required to be pressed to execute
     /// the callback
     extra_keys: Vec<VKey>,
 }
 
-/// Register and manage hotkeys with windows, as well as the callbacks.
+/// The HotkeyManager is used to register, unregister and await hotkeys with their callback
+/// functions.
+///
+/// # Note
+/// Due to limitations with the windows event system the HotkeyManager can't be moved to other
+/// threads.
 ///
 pub struct HotkeyManager<T> {
+    /// Handle to the hidden window that is used to receive the hotkey events
     hwnd: HwndDropper,
     id_offset: i32,
     handlers: HashMap<HotkeyId, HotkeyCallback<T>>,
@@ -53,13 +61,8 @@ impl<T> Default for HotkeyManager<T> {
 }
 
 impl<T> HotkeyManager<T> {
-    /// Create a new HotkeyManager instance.
-    ///
-    /// The hotkey ids that are registered by this will start at offset 0,
-    /// so creating a second instance with `new` will result in failing
-    /// hotkey registration due to the ids being in use already. To register
-    /// hotkeys with multiple instances see `new_with_id_offset`. Keep in
-    /// mind though that only one instance can be listing for hotkeys anyways.
+    /// Create a new HotkeyManager instance. This instance can't be moved to other threads due to
+    /// limitations in the windows events system.
     ///
     pub fn new() -> HotkeyManager<T> {
         // Try to create a hidden window to receive the hotkey events for the HotkeyManager.
@@ -74,24 +77,28 @@ impl<T> HotkeyManager<T> {
         }
     }
 
-    /// Register a hotkey with callback and require additional extra keys to be pressed.
+    /// Register a new hotkey with additional required extra keys.
     ///
-    /// This will try to register the hotkey&modifiers with windows and add the callback with
-    /// the extra keys to the handlers.
+    /// This will try to register the specified hotkey with windows, but not actively listen for it.
+    /// To listen for hotkeys in order to actually execute the callbacks, the `event_loop` function
+    /// must be called.
     ///
     /// # Arguments
     ///
-    /// * `key` - The main hotkey. For example VK_ENTER for CTRL + ALT + ENTER combination.
+    /// * `key` - The main hotkey. For example `VKey::Return` for the CTRL + ALT + ENTER
+    /// combination.
     ///
-    /// * `key_modifiers` - The modifier keys as combined flags. This can be MOD_ALT, MOD_CONTROL,
-    /// MOD_SHIFT or a bitwise combination of those. The modifier keys are the keys that need to
-    /// be pressed in addition to the main hotkey in order for the hotkey event to fire.
+    /// * `key_modifiers` - The modifier keys that need to be combined with the main key. The
+    /// modifier keys are the keys that need to be pressed in addition to the main hotkey in order
+    /// for the hotkey event to fire. For example `&[ModKey::Ctrl, ModKey::Alt]` for the
+    /// CTRL + ALT + ENTER combination.
     ///
-    /// * `extra_keys` - A list of additional VKs that also need to be pressed for the hotkey callback
-    /// to be executed. This is enforced after the windows hotkey event is fired but before executing
-    /// the callback.
+    /// * `extra_keys` - A list of additional VKeys that also need to be pressed for the hotkey
+    /// callback to be executed. This is enforced after the windows hotkey event is fired, but
+    /// before executing the callback. So these keys need to be pressed before the main hotkey.
     ///
-    /// * `callback` - A callback function or closure that will be executed when the hotkey is pressed
+    /// * `callback` - A callback function or closure that will be executed when the hotkey is
+    /// triggered. The return type for all callbacks in the same HotkeyManager must be the same.
     ///
     /// # Windows API Functions used
     /// - https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerhotkey
@@ -146,7 +153,7 @@ impl<T> HotkeyManager<T> {
         self.register_extrakeys(key, key_modifiers, &[], callback)
     }
 
-    /// Unregister a hotkey
+    /// Unregister a hotkey. This will prevent the hotkey from being triggered in the future.
     ///
     /// # Windows API Functions used
     /// - https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-unregisterhotkey
@@ -164,7 +171,7 @@ impl<T> HotkeyManager<T> {
     }
 
     /// Unregister all registered hotkeys. This will be called automatically when dropping the
-    /// HotkeyManager instance
+    /// HotkeyManager instance.
     ///
     /// # Windows API Functions used
     /// - https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-unregisterhotkey
@@ -179,11 +186,11 @@ impl<T> HotkeyManager<T> {
     }
 
     /// Poll a hotkey event, execute the callback if all keys match and return the callback
-    /// result.
+    /// result. This will block until a hotkey is triggered or it is interrupted and therefore not 
+    /// use up any cpu power.
     ///
-    /// If the event is intercepted, `None` is returned.
-    ///
-    /// This will block until a hotkey is pressed and therefore not consume any cpu power.
+    /// If the event is intercepted, `None` is returned, otherwise `Some` is returned with the 
+    /// return value of the executed callback function.
     ///
     /// ## Windows API Functions used
     /// - https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getmessagew
@@ -220,10 +227,16 @@ impl<T> HotkeyManager<T> {
         }
     }
 
+    /// Run the event loop, listening for hotkeys. This will run indefinitely until interrupted and
+    /// execute any hotkeys registered before.
+    /// 
     pub fn event_loop(&self) {
         while self.poll_event().is_some() {}
     }
 
+    /// Get an `InterruptHandle` for this `HotkeyManager` that can be used to interrupt the event 
+    /// loop.
+    /// 
     pub fn interrupt_handle(&self) -> InterruptHandle {
         InterruptHandle(self.hwnd.0)
     }
@@ -235,11 +248,20 @@ impl<T> Drop for HotkeyManager<T> {
     }
 }
 
+/// The `InterruptHandle` can be used to interrupt the event loop of the originating `HotkeyManager`.
+/// This handle can be used from any thread and can be used multiple times.
+/// 
+/// # Note
+/// This handle will technically stay valid even after the `HotkeyManager` is dropped, but it will
+/// simply not do anything.
+/// 
 pub struct InterruptHandle(HWND);
 
 unsafe impl Send for InterruptHandle {}
 
 impl InterruptHandle {
+    /// Interrupt the evet loop of the associated `HotkeyManager`.
+    /// 
     pub fn interrupt(&self) {
         unsafe {
             PostMessageW(self.0, WM_NULL, 0, 0);
@@ -264,6 +286,7 @@ pub fn get_global_keystate(vk: VKey) -> bool {
 }
 
 /// Wrapper around a HWND windows pointer that destroys the window on drop
+/// 
 struct HwndDropper(HWND);
 
 impl Drop for HwndDropper {
@@ -275,13 +298,14 @@ impl Drop for HwndDropper {
 }
 
 /// Try to create a hidden "message-only" window
+/// 
 fn create_hidden_window() -> Result<HwndDropper, ()> {
     let hwnd = unsafe {
         // Get the current module handle
         let hinstance = GetModuleHandleA(std::ptr::null_mut());
         CreateWindowExA(
             WS_EX_NOACTIVATE,
-            // The "Static" class is not intended for windows, but this shouldn't matter since the 
+            // The "Static" class is not intended for windows, but this shouldn't matter since the
             // window is hidden anyways
             b"Static\0".as_ptr() as *const i8,
             b"\0".as_ptr() as *const i8,

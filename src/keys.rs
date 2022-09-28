@@ -7,6 +7,7 @@ pub use vkey::*;
 /// Reexport of all `VK_*` and `MOD_*` constants from the `winapi` crate (`winapi::um::winuser`).
 /// Unless there is an actual special reason for using these codes directly, the variants of the
 /// `VKey` and `ModKey` enums should be used to specify keys instead.
+///
 pub mod winapi_keycodes {
     pub use winapi::um::winuser::{
         VK_ACCEPT, VK_ADD, VK_APPS, VK_ATTN, VK_BACK, VK_BROWSER_BACK, VK_BROWSER_FAVORITES,

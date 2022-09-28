@@ -339,12 +339,14 @@ pub enum VKey {
     /// that are not covered by the other enum variants.
     ///
     /// See: https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
+    ///
     CustomKeyCode(i32),
 }
 
 impl VKey {
     /// Try to create a VKey from a char. This only works for the simple number and letter keys
     /// ('A' to 'Z' and '0' to '9'). Letters can be upper or lower case
+    ///
     pub const fn from_char(ch: char) -> Result<Self, HkError> {
         match ch.to_ascii_uppercase() {
             ch @ ('A'..='Z' | '0'..='9') => Ok(Self::CustomKeyCode(ch as i32)),
@@ -353,6 +355,7 @@ impl VKey {
     }
 
     /// Get the actual windows virtual keycode for the `VKey` for usage with winapi functions
+    ///
     pub const fn to_vk_code(&self) -> i32 {
         use winapi::um::winuser::*;
         match self {
@@ -525,6 +528,7 @@ impl VKey {
     /// digit hex representation. For example 0x08 == VK_TAB (Tab key)
     ///
     /// See https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
+    ///
     pub fn from_keyname(val: &str) -> Result<Self, HkError> {
         let val = val.to_ascii_uppercase();
 
