@@ -1,6 +1,15 @@
 [package]
 name = "windows-hotkeys"
 version = "0.1.0"
+authors = ["Daniel M <danielm-github@dnml.de>"]
+license = "MIT"
+repository = "https://github.com/dnlmlr/windows-hotkeys"
+homepage = "https://github.com/dnlmlr/windows-hotkeys"
+documentation = "https://docs.rs/windows-hotkeys"
+readme = "README.md"
+description = "A simple abstraction to manage system-wide hotkeys on windows"
+categories = ["os::windows-apis", "api-bindings"]
+keywords = ["hotkey", "windows", "system-wide", "global", "win32", ]
 edition = "2021"
 
 [dependencies]

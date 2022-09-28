@@ -1,4 +1,7 @@
 # Windows Hotkeys
+[![Crates.io](https://img.shields.io/crates/v/windows-hotkeys?style=flat-square)](https://crates.io/crates/windows-hotkeys)
+[![Crates.io](https://img.shields.io/crates/l/windows-hotkeys?style=flat-square)](https://crates.io/crates/windows-hotkeys)
+[![Docs.rs](https://img.shields.io/docsrs/windows-hotkeys?style=flat-square)](https://img.shields.io/docsrs/windows-hotkeys)
 > An opinionated, lightweight crate to handle system-wide hotkeys on windows
 
 The `windows-hotkeys` crate abstracts and handles all interactions with the winapi, including 
@@ -39,23 +42,6 @@ fn main() {
 
 ## Current limitations
 
-### Controlling the event loop
-Currently the biggest limitation is the reconfiguration (registration / unregistration) of hotkeys 
-while at the same time having the event loop running. The `HotkeyManager::event_loop` function will
-run and block indefinitely and calling `HotkeyManager::poll_event` will also block until a hotkey 
-is triggered. So using a custom loop allows to break the loop (and reconfigure hotkeys), but only 
-when a hotkey is actually triggered.
-
-Technically registering and unregistering hotkeys with the winapi can be done fully independent of 
-the actual event loop, so this could be done while still having the event loop running. This would
-require synchronization around the `HotkeyManager`, since the modifications and event loop would be
-running on different threads.
-
-Simply stopping the loop is another problem. Using the same synchronization approach as discussed 
-previously the actual loop can be stopped. The issue here is that the `HotkeyManager::poll_event` 
-blocks at least until a `WM_HOTKEY` window event is received. A possible solution could be to 
-additionally wait for `WM_USER` messages and send one of those in order to stop the loop.
-
 ### Threading
 Due to limitations in the windows API, hotkey events can only be received and unregistered on the 
 same thread as they were initially registered. This means that a `HotkeyManager` instance can't be 
@@ -63,3 +49,7 @@ moved between threads.
 
 Using `windows-hotkeys` with multithreading is still possible, but the `HotkeyManager` must be 
 created and used on the same thread.
+
+A possible solution to this limitation might be to have each `HotkeyManager` run it's own thread in 
+the backgroud that is used to register, unregister and listen for hotkeys. This might be implemented
+in the future and would provide a more ergonomic way to use the `HotkeyManager` in general.
