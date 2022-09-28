@@ -189,7 +189,7 @@ impl<T> HotkeyManager<T> {
     /// result. This will block until a hotkey is triggered or it is interrupted and therefore not 
     /// use up any cpu power.
     ///
-    /// If the event is intercepted, `None` is returned, otherwise `Some` is returned with the 
+    /// If the event is interrupted, `None` is returned, otherwise `Some` is returned with the 
     /// return value of the executed callback function.
     ///
     /// ## Windows API Functions used
