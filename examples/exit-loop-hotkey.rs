@@ -43,7 +43,7 @@ fn main() {
 
         // Since the callbacks return a `ControlFlow` variant, check if the loop should exit
         match control_flow {
-            ControlFlow::Exit => break,
+            Some(ControlFlow::Exit) | None => break,
             _ => (),
         }
     }

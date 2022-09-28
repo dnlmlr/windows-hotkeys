@@ -5,12 +5,14 @@ pub mod error;
 pub mod keys;
 
 use std::collections::HashMap;
+use std::marker::PhantomData;
 
 use winapi::shared::windef::HWND;
 use winapi::um::libloaderapi::GetModuleHandleA;
 use winapi::um::winuser::{
-    self, CreateWindowExA, DestroyWindow, GetAsyncKeyState, GetMessageW, RegisterHotKey,
-    UnregisterHotKey, HWND_MESSAGE, MSG, WM_HOTKEY, WS_DISABLED, WS_EX_NOACTIVATE,
+    self, CreateWindowExA, DestroyWindow, GetAsyncKeyState, GetMessageW, PostMessageW,
+    RegisterHotKey, UnregisterHotKey, HWND_MESSAGE, MSG, WM_HOTKEY, WM_NULL, WS_DISABLED,
+    WS_EX_NOACTIVATE,
 };
 
 use crate::{error::HkError, keys::*};
@@ -36,6 +38,12 @@ pub struct HotkeyManager<T> {
     hwnd: HwndDropper,
     id_offset: i32,
     handlers: HashMap<HotkeyId, HotkeyCallback<T>>,
+
+    /// Make sure that `HotkeyManager` is not Send / Sync. This prevents it from being moved
+    /// between threads, which would prevent hotkey-events from being received.
+    ///
+    /// Being stuck on the same thread is an inherent limitation of the windows event system.
+    _unimpl_send_sync: PhantomData<*const u8>,
 }
 
 impl<T> Default for HotkeyManager<T> {
@@ -62,6 +70,7 @@ impl<T> HotkeyManager<T> {
             hwnd,
             id_offset: 0,
             handlers: HashMap::new(),
+            _unimpl_send_sync: PhantomData,
         }
     }
 
@@ -172,17 +181,20 @@ impl<T> HotkeyManager<T> {
     /// Poll a hotkey event, execute the callback if all keys match and return the callback
     /// result.
     ///
+    /// If the event is intercepted, `None` is returned.
+    ///
     /// This will block until a hotkey is pressed and therefore not consume any cpu power.
     ///
     /// ## Windows API Functions used
     /// - https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getmessagew
     ///
-    pub fn poll_event(&mut self) -> T {
+    pub fn poll_event(&self) -> Option<T> {
         loop {
             let mut msg = std::mem::MaybeUninit::<MSG>::uninit();
 
-            // Block and read a message from the message queue. Filtered by only WM_HOTKEY messages
-            let ok = unsafe { GetMessageW(msg.as_mut_ptr(), self.hwnd.0, WM_HOTKEY, WM_HOTKEY) };
+            // Block and read a message from the message queue. Filtered to receive messages from
+            // WM_NULL to WM_HOTKEY
+            let ok = unsafe { GetMessageW(msg.as_mut_ptr(), self.hwnd.0, WM_NULL, WM_HOTKEY) };
 
             if ok != 0 {
                 let msg = unsafe { msg.assume_init() };
@@ -198,24 +210,40 @@ impl<T> HotkeyManager<T> {
                             .iter()
                             .any(|vk| !get_global_keystate(*vk))
                         {
-                            return (handler.callback)();
+                            return Some((handler.callback)());
                         }
                     }
+                } else if WM_NULL == msg.message {
+                    return None;
                 }
             }
         }
     }
 
-    pub fn event_loop(&mut self) {
-        loop {
-            self.poll_event();
-        }
+    pub fn event_loop(&self) {
+        while self.poll_event().is_some() {}
+    }
+
+    pub fn interrupt_handle(&self) -> InterruptHandle {
+        InterruptHandle(self.hwnd.0)
     }
 }
 
 impl<T> Drop for HotkeyManager<T> {
     fn drop(&mut self) {
         let _ = self.unregister_all();
+    }
+}
+
+pub struct InterruptHandle(HWND);
+
+unsafe impl Send for InterruptHandle {}
+
+impl InterruptHandle {
+    pub fn interrupt(&self) {
+        unsafe {
+            PostMessageW(self.0, WM_NULL, 0, 0);
+        }
     }
 }
 
@@ -253,7 +281,8 @@ fn create_hidden_window() -> Result<HwndDropper, ()> {
         let hinstance = GetModuleHandleA(std::ptr::null_mut());
         CreateWindowExA(
             WS_EX_NOACTIVATE,
-            // A class that is not more for windows, but this shouldn't matter since it is hidden
+            // The "Static" class is not intended for windows, but this shouldn't matter since the 
+            // window is hidden anyways
             b"Static\0".as_ptr() as *const i8,
             b"\0".as_ptr() as *const i8,
             WS_DISABLED,
