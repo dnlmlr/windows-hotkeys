@@ -185,9 +185,9 @@ impl<T> HotkeyManager<T> {
         Ok(())
     }
 
-    /// Poll a hotkey event, execute the callback if all keys match and return the callback
-    /// result. This will block until a hotkey is triggered or it is interrupted and therefore not 
-    /// use up any cpu power.
+    /// Wait for a single a hotkey event and execute the callback if all keys match. This returns 
+    /// the callback result if it was not interrupted. The function call will block until a hotkey 
+    /// is triggered or it is interrupted.
     ///
     /// If the event is interrupted, `None` is returned, otherwise `Some` is returned with the 
     /// return value of the executed callback function.
@@ -195,7 +195,7 @@ impl<T> HotkeyManager<T> {
     /// ## Windows API Functions used
     /// - https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getmessagew
     ///
-    pub fn poll_event(&self) -> Option<T> {
+    pub fn handle_hotkey(&self) -> Option<T> {
         loop {
             let mut msg = std::mem::MaybeUninit::<MSG>::uninit();
 
@@ -231,7 +231,7 @@ impl<T> HotkeyManager<T> {
     /// execute any hotkeys registered before.
     /// 
     pub fn event_loop(&self) {
-        while self.poll_event().is_some() {}
+        while self.handle_hotkey().is_some() {}
     }
 
     /// Get an `InterruptHandle` for this `HotkeyManager` that can be used to interrupt the event 

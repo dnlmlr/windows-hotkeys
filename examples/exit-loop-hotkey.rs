@@ -39,7 +39,7 @@ fn main() {
     loop {
         // Handle one hotkey event. This will block until a hotkey event is triggered and return
         // the return value of the callback
-        let control_flow = hkm.poll_event();
+        let control_flow = hkm.handle_hotkey();
 
         // Since the callbacks return a `ControlFlow` variant, check if the loop should exit
         match control_flow {
