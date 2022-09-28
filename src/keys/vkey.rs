@@ -11,7 +11,7 @@ use super::ModKey;
 ///
 /// A `VKey` can be created for any arbitrary keycode by using the `CustomKeyCode` variant.
 ///
-/// See: https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
+/// See: <https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes>
 ///
 /// ## Note
 /// Matching against a `VKey` can be problematic since all of the variants can also be represented
@@ -338,7 +338,7 @@ pub enum VKey {
     /// Virtual key specified by the actual keycode. This can be used to create a VKey for keys
     /// that are not covered by the other enum variants.
     ///
-    /// See: https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
+    /// See: <https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes>
     ///
     CustomKeyCode(i32),
 }
@@ -527,7 +527,7 @@ impl VKey {
     /// - Any other key can be represented by directly specifying the VK keycode value in 2
     /// digit hex representation. For example 0x08 == VK_TAB (Tab key)
     ///
-    /// See https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
+    /// See <https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes>
     ///
     pub fn from_keyname(val: &str) -> Result<Self, HkError> {
         let val = val.to_ascii_uppercase();

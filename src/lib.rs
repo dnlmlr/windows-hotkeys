@@ -1,31 +1,41 @@
 #[cfg(not(target_os = "windows"))]
 compile_error!("Only supported on windows");
 
+#[cfg(windows)]
 pub mod error;
+#[cfg(windows)]
 pub mod keys;
 
+#[cfg(windows)]
 use std::collections::HashMap;
+#[cfg(windows)]
 use std::marker::PhantomData;
 
+#[cfg(windows)]
 use winapi::shared::windef::HWND;
+#[cfg(windows)]
 use winapi::um::libloaderapi::GetModuleHandleA;
+#[cfg(windows)]
 use winapi::um::winuser::{
     self, CreateWindowExA, DestroyWindow, GetAsyncKeyState, GetMessageW, PostMessageW,
     RegisterHotKey, UnregisterHotKey, HWND_MESSAGE, MSG, WM_HOTKEY, WM_NULL, WS_DISABLED,
     WS_EX_NOACTIVATE,
 };
 
+#[cfg(windows)]
 use crate::{error::HkError, keys::*};
 
 /// Identifier of a registered hotkey. This is returned when registering a hotkey and can be used
 /// to unregister it later.
 ///
+#[cfg(windows)]
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct HotkeyId(i32);
 
 /// HotkeyCallback contains the callback function and a list of extra_keys that need to be pressed
 /// together with the hotkey when executing the callback.
 ///
+#[cfg(windows)]
 struct HotkeyCallback<T> {
     /// Callback function to execute  when the hotkey & extrakeys match
     callback: Box<dyn Fn() -> T + 'static>,
@@ -41,6 +51,7 @@ struct HotkeyCallback<T> {
 /// Due to limitations with the windows event system the HotkeyManager can't be moved to other
 /// threads.
 ///
+#[cfg(windows)]
 pub struct HotkeyManager<T> {
     /// Handle to the hidden window that is used to receive the hotkey events
     hwnd: HwndDropper,
@@ -54,12 +65,14 @@ pub struct HotkeyManager<T> {
     _unimpl_send_sync: PhantomData<*const u8>,
 }
 
+#[cfg(windows)]
 impl<T> Default for HotkeyManager<T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
+#[cfg(windows)]
 impl<T> HotkeyManager<T> {
     /// Create a new HotkeyManager instance. This instance can't be moved to other threads due to
     /// limitations in the windows events system.
@@ -101,7 +114,7 @@ impl<T> HotkeyManager<T> {
     /// triggered. The return type for all callbacks in the same HotkeyManager must be the same.
     ///
     /// # Windows API Functions used
-    /// - https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerhotkey
+    /// - <https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerhotkey>
     ///
     pub fn register_extrakeys(
         &mut self,
@@ -142,7 +155,7 @@ impl<T> HotkeyManager<T> {
     /// Same as `register_extrakeys` but without extra keys.
     ///
     /// # Windows API Functions used
-    /// - https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerhotkey
+    /// - <https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerhotkey>
     ///
     pub fn register(
         &mut self,
@@ -156,7 +169,7 @@ impl<T> HotkeyManager<T> {
     /// Unregister a hotkey. This will prevent the hotkey from being triggered in the future.
     ///
     /// # Windows API Functions used
-    /// - https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-unregisterhotkey
+    /// - <https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-unregisterhotkey>
     ///
     pub fn unregister(&mut self, id: HotkeyId) -> Result<(), HkError> {
         let ok = unsafe { UnregisterHotKey(self.hwnd.0, id.0) };
@@ -174,7 +187,7 @@ impl<T> HotkeyManager<T> {
     /// HotkeyManager instance.
     ///
     /// # Windows API Functions used
-    /// - https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-unregisterhotkey
+    /// - <https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-unregisterhotkey>
     ///
     pub fn unregister_all(&mut self) -> Result<(), HkError> {
         let ids: Vec<_> = self.handlers.keys().copied().collect();
@@ -193,7 +206,7 @@ impl<T> HotkeyManager<T> {
     /// return value of the executed callback function.
     ///
     /// ## Windows API Functions used
-    /// - https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getmessagew
+    /// - <https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getmessagew>
     ///
     pub fn handle_hotkey(&self) -> Option<T> {
         loop {
@@ -242,6 +255,7 @@ impl<T> HotkeyManager<T> {
     }
 }
 
+#[cfg(windows)]
 impl<T> Drop for HotkeyManager<T> {
     fn drop(&mut self) {
         let _ = self.unregister_all();
@@ -255,10 +269,13 @@ impl<T> Drop for HotkeyManager<T> {
 /// This handle will technically stay valid even after the `HotkeyManager` is dropped, but it will
 /// simply not do anything.
 /// 
+#[cfg(windows)]
 pub struct InterruptHandle(HWND);
 
+#[cfg(windows)]
 unsafe impl Send for InterruptHandle {}
 
+#[cfg(windows)]
 impl InterruptHandle {
     /// Interrupt the evet loop of the associated `HotkeyManager`.
     /// 
@@ -274,8 +291,9 @@ impl InterruptHandle {
 /// Return true if the key is pressed, false otherwise.
 ///
 /// ## Windows API Functions used
-/// - https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getasynckeystate
+/// - <https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getasynckeystate>
 ///
+#[cfg(windows)]
 pub fn get_global_keystate(vk: VKey) -> bool {
     // Most significant bit represents key state (1 => pressed, 0 => not pressed)
     let key_state = unsafe { GetAsyncKeyState(vk.to_vk_code()) };
@@ -287,8 +305,10 @@ pub fn get_global_keystate(vk: VKey) -> bool {
 
 /// Wrapper around a HWND windows pointer that destroys the window on drop
 /// 
+#[cfg(windows)]
 struct HwndDropper(HWND);
 
+#[cfg(windows)]
 impl Drop for HwndDropper {
     fn drop(&mut self) {
         if !self.0.is_null() {
@@ -299,6 +319,7 @@ impl Drop for HwndDropper {
 
 /// Try to create a hidden "message-only" window
 /// 
+#[cfg(windows)]
 fn create_hidden_window() -> Result<HwndDropper, ()> {
     let hwnd = unsafe {
         // Get the current module handle

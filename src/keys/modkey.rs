@@ -4,7 +4,7 @@ use crate::{error::HkError, VKey};
 
 /// Modifier Key for hotkeys.
 ///
-/// See: `fsModifiers` from https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerhotkey
+/// See: `fsModifiers` from <https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerhotkey>
 ///
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ModKey {
@@ -35,7 +35,7 @@ impl ModKey {
 
     /// Obtain the modifier code for the `ModKey`.
     ///
-    /// See: `fsModifiers` from https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerhotkey
+    /// See: `fsModifiers` from <https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerhotkey>
     /// 
     pub const fn to_mod_code(&self) -> u32 {
         use winapi::um::winuser::*;
