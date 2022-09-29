@@ -1,7 +1,7 @@
 # Windows Hotkeys
 [![Crates.io](https://img.shields.io/crates/v/windows-hotkeys?style=flat-square)](https://crates.io/crates/windows-hotkeys)
 [![Crates.io](https://img.shields.io/crates/l/windows-hotkeys?style=flat-square)](https://crates.io/crates/windows-hotkeys)
-[![Docs.rs](https://img.shields.io/docsrs/windows-hotkeys?style=flat-square)](https://img.shields.io/docsrs/windows-hotkeys)
+[![Docs.rs](https://img.shields.io/docsrs/windows-hotkeys?style=flat-square)](https://docs.rs/windows-hotkeys/latest/windows_hotkeys)
 > An opinionated, lightweight crate to handle system-wide hotkeys on windows
 
 The `windows-hotkeys` crate abstracts and handles all interactions with the winapi, including 
