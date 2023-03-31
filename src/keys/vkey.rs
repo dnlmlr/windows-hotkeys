@@ -535,7 +535,7 @@ impl VKey {
         // Single letter => Simply use the ASCII Code
         if val.as_bytes().len() == 1 {
             let val = val.as_bytes()[0];
-            if (b'A'..=b'Z').contains(&val) || (b'0'..=b'9').contains(&val) {
+            if val.is_ascii_uppercase() || val.is_ascii_digit() {
                 return Ok(Self::CustomKeyCode(val as i32));
             }
         }
