@@ -5,10 +5,11 @@
 > An opinionated, lightweight crate to handle system-wide hotkeys on windows
 
 The `windows-hotkeys` crate abstracts and handles all interactions with the winapi, including 
-registering hotkeys and handling the events. A hotkey manager instance is used to register key
-combinations together with easy callbacks.
+registering hotkeys and handling the events and providing threadsafe access. A hotkey manager 
+instance is used to register key combinations together with easy callbacks.
 
 ## Features
+- Usable over multiple threads, bypassing the WinAPI same-thread requirements for the hotkey API
 - Full highlevel abstraction over the winapi functions and events
 - Easy to use
 - Register hotkeys with Key + Modifier
@@ -26,7 +27,7 @@ combinations together with easy callbacks.
 
 ```rust
 use windows_hotkeys::keys::{ModKey, VKey};
-use windows_hotkeys::HotkeyManager;
+use windows_hotkeys::{HotkeyManager, HotkeyManagerImpl};
 
 fn main() {
     let mut hkm = HotkeyManager::new();
@@ -40,16 +41,20 @@ fn main() {
 }
 ```
 
-## Current limitations
-
-### Threading
+## Threading
 Due to limitations in the windows API, hotkey events can only be received and unregistered on the 
-same thread as they were initially registered. This means that a `HotkeyManager` instance can't be 
-moved between threads. 
+same thread as they were initially registered. This means that a normal 
+`singlethreaded::HotkeyManager` instance can't be moved between threads. 
 
-Using `windows-hotkeys` with multithreading is still possible, but the `HotkeyManager` must be 
-created and used on the same thread.
+Using the `windows-hotkeys` `singlethreaded` API with multithreading is still possible, but the 
+`singlethreaded::HotkeyManager` must be created and used on the same thread.
 
-A possible solution to this limitation might be to have each `HotkeyManager` run it's own thread in 
-the backgroud that is used to register, unregister and listen for hotkeys. This might be implemented
-in the future and would provide a more ergonomic way to use the `HotkeyManager` in general.
+However by the default enabled `threadsafe` feature add the `threadsafe::HotkeyManager` 
+implementation which solved this issue and provides the default `HotkeyManager` implementation.
+
+This is done by launching a background thread when a `threadsafe::HotkeyManager` is instantiated 
+that is listening for commands on a channel receiver. There is one command for each of the 
+`HotkeyManager` functions and upon receiving a command, the matching function is called from that 
+same thread. The `threadsafe::HotkeyManager` is nothing more than a stub that controls the actual 
+backend thread via these channel commands. This way all of the hotkey functions are executed on the
+same thread, no matter from where the stub functions are called.
