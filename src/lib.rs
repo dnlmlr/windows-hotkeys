@@ -7,6 +7,9 @@ pub mod error;
 pub mod keys;
 
 #[cfg(windows)]
+pub mod threadsafe;
+
+#[cfg(windows)]
 use std::collections::HashMap;
 #[cfg(windows)]
 use std::marker::PhantomData;
@@ -271,6 +274,9 @@ impl<T> Drop for HotkeyManager<T> {
 /// 
 #[cfg(windows)]
 pub struct InterruptHandle(HWND);
+
+#[cfg(windows)]
+unsafe impl Sync for InterruptHandle {}
 
 #[cfg(windows)]
 unsafe impl Send for InterruptHandle {}
