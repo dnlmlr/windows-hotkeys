@@ -5,17 +5,17 @@ use std::{
 
 use windows_hotkeys::{
     keys::{ModKey, VKey},
-    threadsafe::TSHotkeyManager,
+    threadsafe::HotkeyManager, HotkeyManagerImpl,
 };
 
 fn main() {
     // Create a HKM1 on main thread
-    let mut hkm = TSHotkeyManager::new();
+    let mut hkm = HotkeyManager::new();
 
     println!("Created HKM1 on thread {:?}", std::thread::current().id());
 
     // Create a HKM2 on main thread
-    let mut hkm2 = TSHotkeyManager::new();
+    let mut hkm2 = HotkeyManager::new();
 
     println!("Created HKM2 on thread {:?}", std::thread::current().id());
 

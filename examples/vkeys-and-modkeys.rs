@@ -1,6 +1,7 @@
 use windows_hotkeys::{
     keys::{ModKey, VKey},
-    HotkeyManager,
+    singlethreaded::HotkeyManager,
+    HotkeyManagerImpl,
 };
 
 fn main() {

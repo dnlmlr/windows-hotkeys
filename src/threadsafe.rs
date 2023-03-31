@@ -7,7 +7,7 @@ use std::{
 use crate::{
     error::HkError,
     keys::{ModKey, VKey},
-    HotkeyId, HotkeyManager, InterruptHandle,
+    singlethreaded, HotkeyId, HotkeyManagerImpl, InterruptHandle,
 };
 
 struct Hotkey<T: 'static> {
@@ -27,20 +27,23 @@ enum HkMsg<T: 'static> {
     Exit(Sender<()>),
 }
 
-pub struct TSHotkeyManager<T: 'static> {
+pub struct HotkeyManager<T: 'static> {
     _phantom: PhantomData<T>,
     snd: Sender<HkMsg<T>>,
     backend_handle: Option<JoinHandle<()>>,
 }
 
 struct TSHotkeyManagerBackend<T: 'static> {
-    hkm: HotkeyManager<T>,
+    hkm: singlethreaded::HotkeyManager<T>,
     rec: Receiver<HkMsg<T>>,
 }
 
 impl<T> TSHotkeyManagerBackend<T> {
+    /// Create a new HotkeyManager instance. To work around the same-thread limitation of the
+    /// windows event API, this will launch a new background thread to handle hotkey interactions.
+    ///
     fn new(rec: Receiver<HkMsg<T>>) -> Self {
-        let hkm = HotkeyManager::new();
+        let hkm = singlethreaded::HotkeyManager::new();
         Self { hkm, rec }
     }
 
@@ -85,8 +88,8 @@ impl<T> TSHotkeyManagerBackend<T> {
     }
 }
 
-impl<T: 'static + Send> TSHotkeyManager<T> {
-    pub fn new() -> Self {
+impl<T: 'static + Send> HotkeyManagerImpl<T> for HotkeyManager<T> {
+    fn new() -> Self {
         let (snd, rec) = channel();
         let backend_handle = spawn(move || {
             let mut backend = TSHotkeyManagerBackend::<T>::new(rec);
@@ -100,7 +103,7 @@ impl<T: 'static + Send> TSHotkeyManager<T> {
         }
     }
 
-    pub fn register(
+    fn register(
         &mut self,
         key: VKey,
         key_modifiers: &[ModKey],
@@ -109,7 +112,7 @@ impl<T: 'static + Send> TSHotkeyManager<T> {
         self.register_extrakeys(key, key_modifiers, &[], callback)
     }
 
-    pub fn register_extrakeys(
+    fn register_extrakeys(
         &mut self,
         key: VKey,
         key_modifiers: &[ModKey],
@@ -127,38 +130,38 @@ impl<T: 'static + Send> TSHotkeyManager<T> {
         ret_ch.1.recv().unwrap()
     }
 
-    pub fn unregister(&mut self, id: HotkeyId) -> Result<(), HkError> {
+    fn unregister(&mut self, id: HotkeyId) -> Result<(), HkError> {
         let ret_ch = channel();
         self.snd.send(HkMsg::Unregister(ret_ch.0, id)).unwrap();
         ret_ch.1.recv().unwrap()
     }
 
-    pub fn unregister_all(&mut self) -> Result<(), HkError> {
+    fn unregister_all(&mut self) -> Result<(), HkError> {
         let ret_ch = channel();
         self.snd.send(HkMsg::UnregisterAll(ret_ch.0)).unwrap();
         ret_ch.1.recv().unwrap()
     }
 
-    pub fn handle_hotkey(&self) -> Option<T> {
+    fn handle_hotkey(&self) -> Option<T> {
         let ret_ch = channel();
         self.snd.send(HkMsg::HandleHotkey(ret_ch.0)).unwrap();
         ret_ch.1.recv().unwrap()
     }
 
-    pub fn event_loop(&self) {
+    fn event_loop(&self) {
         let ret_ch = channel();
         self.snd.send(HkMsg::EventLoop(ret_ch.0)).unwrap();
         ret_ch.1.recv().unwrap()
     }
 
-    pub fn interrupt_handle(&self) -> InterruptHandle {
+    fn interrupt_handle(&self) -> InterruptHandle {
         let ret_ch = channel();
         self.snd.send(HkMsg::InterruptHandle(ret_ch.0)).unwrap();
         ret_ch.1.recv().unwrap()
     }
 }
 
-impl<T> Drop for TSHotkeyManager<T> {
+impl<T> Drop for HotkeyManager<T> {
     fn drop(&mut self) {
         let ret_ch = channel();
         self.snd.send(HkMsg::Exit(ret_ch.0)).unwrap();

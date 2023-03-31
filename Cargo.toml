@@ -1,16 +1,23 @@
 [package]
 name = "windows-hotkeys"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Daniel M <danielm-github@dnml.de>"]
 license = "MIT"
 repository = "https://github.com/dnlmlr/windows-hotkeys"
 homepage = "https://github.com/dnlmlr/windows-hotkeys"
-documentation = "https://docs.rs/crate/windows-hotkeys/0.1.1"
+documentation = "https://docs.rs/crate/windows-hotkeys/0.2.0"
 readme = "README.md"
-description = "A simple abstraction to manage system-wide hotkeys on windows"
+description = "A simple thread safe abstraction to manage system-wide hotkeys on windows"
 categories = ["os::windows-apis", "api-bindings"]
 keywords = ["hotkey", "windows", "system-wide", "global", "win32", ]
 edition = "2021"
+
+[features]
+default = ["threadsafe"]
+
+# Enable the threadsafe implementation that uses an extra backend thread and channel communication
+# to work around the same-thread limitation of the windows event queue
+threadsafe = []
 
 [dependencies]
 thiserror = "1.0.35"

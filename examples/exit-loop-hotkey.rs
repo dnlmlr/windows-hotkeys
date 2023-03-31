@@ -1,6 +1,7 @@
 use windows_hotkeys::{
     keys::{ModKey, VKey},
-    HotkeyManager,
+    singlethreaded::HotkeyManager,
+    HotkeyManagerImpl,
 };
 
 /// A simple control flow enum that can either continue the event handler or stop it
