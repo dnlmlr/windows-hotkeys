@@ -1,7 +1,7 @@
 use clipboard_win::{get_clipboard_string, set_clipboard_string};
 use windows_hotkeys::{
     keys::{ModKey, VKey},
-    HotkeyManager,
+    HotkeyManager, HotkeyManagerImpl,
 };
 
 fn main() {
