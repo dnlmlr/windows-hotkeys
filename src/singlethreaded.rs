@@ -7,7 +7,7 @@ use std::marker::PhantomData;
 use winapi::shared::windef::HWND;
 use winapi::um::libloaderapi::GetModuleHandleA;
 use winapi::um::winuser::{
-    self, CreateWindowExA, DestroyWindow, GetMessageW, RegisterHotKey, UnregisterHotKey,
+    CreateWindowExA, DestroyWindow, GetMessageW, RegisterHotKey, UnregisterHotKey,
     HWND_MESSAGE, MSG, WM_HOTKEY, WM_NULL, WS_DISABLED, WS_EX_NOACTIVATE,
 };
 
@@ -28,6 +28,8 @@ pub struct HotkeyManager<T> {
     hwnd: HwndDropper,
     id_offset: i32,
     handlers: HashMap<HotkeyId, HotkeyCallback<T>>,
+    /// Automatically set the `ModKey::NoRepeat` when registering hotkeys. Defaults to `true`
+    no_repeat: bool,
 
     /// Make sure that `HotkeyManager` is not Send / Sync. This prevents it from being moved
     /// between threads, which would prevent hotkey-events from being received.
@@ -39,6 +41,21 @@ pub struct HotkeyManager<T> {
 impl<T> Default for HotkeyManager<T> {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl<T> HotkeyManager<T> {
+    /// Enable or disable the automatically applied `ModKey::NoRepeat` modifier. By default, this
+    /// option is set to `true` which causes all hotkey registration calls to add the `NoRepeat`
+    /// modifier, thereby disabling automatic retriggers of hotkeys when holding down the keys.
+    ///
+    /// When this option is disabled, the `ModKey::NoRepeat` can still be manually added while
+    /// registering hotkeys.
+    ///
+    /// Note: Setting this flag doesn't change previously registered hotkeys. It only applies to
+    /// registrations performed after calling this function.
+    pub fn set_no_repeat(&mut self, no_repeat: bool) {
+        self.no_repeat = no_repeat;
     }
 }
 
@@ -55,6 +72,7 @@ impl<T> HotkeyManagerImpl<T> for HotkeyManager<T> {
             hwnd,
             id_offset: 0,
             handlers: HashMap::new(),
+            no_repeat: true,
             _unimpl_send_sync: PhantomData,
         }
     }
@@ -69,12 +87,17 @@ impl<T> HotkeyManagerImpl<T> for HotkeyManager<T> {
         let register_id = HotkeyId(self.id_offset);
         self.id_offset += 1;
 
+        let mut modifiers = ModKey::combine(key_modifiers);
+        if self.no_repeat {
+            modifiers |= ModKey::NoRepeat.to_mod_code();
+        }
+
         // Try to register the hotkey combination with windows
         let reg_ok = unsafe {
             RegisterHotKey(
                 self.hwnd.0,
                 register_id.0,
-                ModKey::combine(key_modifiers) | winuser::MOD_NOREPEAT as u32,
+                modifiers,
                 key.to_vk_code() as u32,
             )
         };

@@ -12,6 +12,9 @@ pub enum ModKey {
     Ctrl,
     Shift,
     Win,
+    /// This is a virtual modifier key that is used to prevent automatically repeating triggers
+    /// when the hotkey is being held down. When converting to a VKey, this is mapped to KeyCode 0
+    NoRepeat,
 }
 
 impl ModKey {
@@ -21,7 +24,7 @@ impl ModKey {
     /// - CTRL / CONTROL
     /// - SHIFT
     /// - WIN / WINDOWS / SUPER
-    /// - NOREPEAT
+    /// - NOREPEAT / NO_REPEAT
     ///
     pub fn from_keyname(val: &str) -> Result<Self, HkError> {
         Ok(match val.to_ascii_uppercase().as_ref() {
@@ -29,6 +32,7 @@ impl ModKey {
             "CTRL" | "CONTROL" => ModKey::Ctrl,
             "SHIFT" => ModKey::Shift,
             "WIN" | "WINDOWS" | "SUPER" => ModKey::Win,
+            "NOREPEAT" | "NO_REPEAT" => ModKey::NoRepeat,
             val => return Err(HkError::InvalidKey(val.to_string())),
         })
     }
@@ -36,7 +40,7 @@ impl ModKey {
     /// Obtain the modifier code for the `ModKey`.
     ///
     /// See: `fsModifiers` from <https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerhotkey>
-    /// 
+    ///
     pub const fn to_mod_code(&self) -> u32 {
         use winapi::um::winuser::*;
 
@@ -45,11 +49,12 @@ impl ModKey {
             ModKey::Ctrl => MOD_CONTROL as u32,
             ModKey::Shift => MOD_SHIFT as u32,
             ModKey::Win => MOD_WIN as u32,
+            ModKey::NoRepeat => MOD_NOREPEAT as u32,
         }
     }
 
     /// Combine multiple `ModKey`s using bitwise OR
-    /// 
+    ///
     pub(crate) fn combine(keys: &[ModKey]) -> u32 {
         keys.iter().fold(0, |a, b| a | b.to_mod_code())
     }
@@ -62,6 +67,7 @@ impl Display for ModKey {
             ModKey::Ctrl => "CONTROL",
             ModKey::Shift => "SHIFT",
             ModKey::Win => "WIN",
+            ModKey::NoRepeat => "NO_REPEAT",
         };
         write!(f, "{}", key)
     }
@@ -74,6 +80,7 @@ impl From<ModKey> for VKey {
             ModKey::Ctrl => VKey::Control,
             ModKey::Shift => VKey::Shift,
             ModKey::Win => VKey::LWin,
+            ModKey::NoRepeat => VKey::CustomKeyCode(0),
         }
     }
 }

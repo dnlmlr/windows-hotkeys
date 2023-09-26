@@ -28,6 +28,7 @@ enum HkMsg<T: 'static> {
 }
 
 pub struct HotkeyManager<T: 'static> {
+    no_repeat: bool,
     _phantom: PhantomData<T>,
     snd: Sender<HkMsg<T>>,
     backend_handle: Option<JoinHandle<()>>,
@@ -38,12 +39,28 @@ struct TSHotkeyManagerBackend<T: 'static> {
     rec: Receiver<HkMsg<T>>,
 }
 
+impl<T: 'static> HotkeyManager<T> {
+    /// Enable or disable the automatically applied `ModKey::NoRepeat` modifier. By default, this
+    /// option is set to `true` which causes all hotkey registration calls to add the `NoRepeat`
+    /// modifier, thereby disabling automatic retriggers of hotkeys when holding down the keys.
+    ///
+    /// When this option is disabled, the `ModKey::NoRepeat` can still be manually added while
+    /// registering hotkeys.
+    ///
+    /// Note: Setting this flag doesn't change previously registered hotkeys. It only applies to
+    /// registrations performed after calling this function.
+    pub fn set_no_repeat(&mut self, no_repeat: bool) {
+        self.no_repeat = no_repeat;
+    }
+}
+
 impl<T> TSHotkeyManagerBackend<T> {
     /// Create a new HotkeyManager instance. To work around the same-thread limitation of the
     /// windows event API, this will launch a new background thread to handle hotkey interactions.
     ///
     fn new(rec: Receiver<HkMsg<T>>) -> Self {
-        let hkm = singlethreaded::HotkeyManager::new();
+        let mut hkm = singlethreaded::HotkeyManager::new();
+        hkm.set_no_repeat(false);
         Self { hkm, rec }
     }
 
@@ -97,6 +114,7 @@ impl<T: 'static + Send> HotkeyManagerImpl<T> for HotkeyManager<T> {
         });
 
         Self {
+            no_repeat: true,
             _phantom: PhantomData::default(),
             snd,
             backend_handle: Some(backend_handle),
@@ -120,9 +138,15 @@ impl<T: 'static + Send> HotkeyManagerImpl<T> for HotkeyManager<T> {
         callback: impl Fn() -> T + Send + 'static,
     ) -> Result<HotkeyId, HkError> {
         let ret_ch = channel();
+
+        let mut key_modifiers = key_modifiers.to_vec();
+        if self.no_repeat {
+            key_modifiers.push(ModKey::NoRepeat);
+        }
+
         let hk = Hotkey {
             key,
-            key_modifiers: key_modifiers.to_vec(),
+            key_modifiers,
             extra_keys: extra_keys.to_vec(),
             callback: Box::new(callback),
         };
