@@ -7,8 +7,8 @@ use std::marker::PhantomData;
 use winapi::shared::windef::HWND;
 use winapi::um::libloaderapi::GetModuleHandleA;
 use winapi::um::winuser::{
-    CreateWindowExA, DestroyWindow, GetMessageW, RegisterHotKey, UnregisterHotKey,
-    HWND_MESSAGE, MSG, WM_HOTKEY, WM_NULL, WS_DISABLED, WS_EX_NOACTIVATE,
+    CreateWindowExA, DestroyWindow, GetMessageW, RegisterHotKey, UnregisterHotKey, HWND_MESSAGE,
+    MSG, WM_HOTKEY, WM_NULL, WS_DISABLED, WS_EX_NOACTIVATE,
 };
 
 use crate::{

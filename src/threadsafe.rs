@@ -115,7 +115,7 @@ impl<T: 'static + Send> HotkeyManagerImpl<T> for HotkeyManager<T> {
 
         Self {
             no_repeat: true,
-            _phantom: PhantomData::default(),
+            _phantom: PhantomData,
             snd,
             backend_handle: Some(backend_handle),
         }

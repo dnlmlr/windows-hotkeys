@@ -5,7 +5,8 @@ use std::{
 
 use windows_hotkeys::{
     keys::{ModKey, VKey},
-    threadsafe::HotkeyManager, HotkeyManagerImpl,
+    threadsafe::HotkeyManager,
+    HotkeyManagerImpl,
 };
 
 fn main() {

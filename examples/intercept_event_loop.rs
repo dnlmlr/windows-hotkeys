@@ -5,7 +5,8 @@ use std::{
 
 use windows_hotkeys::{
     keys::{ModKey, VKey},
-    HotkeyManagerImpl, singlethreaded::HotkeyManager,
+    singlethreaded::HotkeyManager,
+    HotkeyManagerImpl,
 };
 
 fn main() {
@@ -27,7 +28,7 @@ fn main() {
         handle.interrupt();
     });
 
-    // Run the event handler in a blocking loop. This will block until interrupted and execute the 
+    // Run the event handler in a blocking loop. This will block until interrupted and execute the
     // set callbacks when registered hotkeys are detected
     hkm.event_loop();
 

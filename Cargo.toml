@@ -1,11 +1,11 @@
 [package]
 name = "windows-hotkeys"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Daniel M <danielm-github@dnml.de>"]
 license = "MIT"
 repository = "https://github.com/dnlmlr/windows-hotkeys"
 homepage = "https://github.com/dnlmlr/windows-hotkeys"
-documentation = "https://docs.rs/crate/windows-hotkeys/0.2.0"
+documentation = "https://docs.rs/crate/windows-hotkeys/0.2.1"
 readme = "README.md"
 description = "A simple thread safe abstraction to manage system-wide hotkeys on windows"
 categories = ["os::windows-apis", "api-bindings"]
@@ -20,7 +20,7 @@ default = ["threadsafe"]
 threadsafe = []
 
 [dependencies]
-thiserror = "1.0.35"
+thiserror = "1.0.48"
 winapi = { version = "0.3.9", features = ["winuser", "libloaderapi"] }
 
 [package.metadata.docs.rs]
